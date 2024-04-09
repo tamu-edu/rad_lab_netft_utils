@@ -36,9 +36,9 @@
 #define NETFT_RDT_DRIVER
 
 #include <boost/asio.hpp>
+#include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
-#include <boost/thread/condition.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 // #include "diagnostic_updater/DiagnosticStatusWrapper.h"
@@ -53,12 +53,12 @@ class NetFTRDTDriver : public rclcpp::Node
 {
 public:
   // Start receiving data from NetFT device
-  explicit NetFTRDTDriver(const std::string &address, const std::string &frame_id = "base_link");
+  explicit NetFTRDTDriver(const std::string & address, const std::string & frame_id = "base_link");
 
   ~NetFTRDTDriver() override;
 
   //! Get newest RDT data from netFT device
-  void getData(geometry_msgs::msg::WrenchStamped &data);
+  void getData(geometry_msgs::msg::WrenchStamped & data);
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub;
   rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub;
@@ -66,7 +66,7 @@ public:
   // //! Add device diagnostics status wrapper
   // void diagnostics(diagnostic_updater::DiagnosticStatusWrapper &d);
 
-  //! Wait for new NetFT data to arrive.  
+  //! Wait for new NetFT data to arrive.
   // Returns true if new data has arrived, false it function times out
   bool waitForNewData(void);
 
@@ -80,9 +80,10 @@ protected:
   // the force_scale_ and torque_scale_ appropriately
   bool readCalibrationInformation(const std::string & address);
 
-  enum {
-    RDT_PORT=49152,
-    TCP_PORT=49151
+  enum
+  {
+    RDT_PORT = 49152,
+    TCP_PORT = 49151
   };
   std::string address_;
   std::string frame_id_;
@@ -96,7 +97,7 @@ protected:
   //! True if recv loop is still running
   bool recv_thread_running_;
   //! Set if recv thread exited because of error
-  std::string recv_thread_error_msg_; 
+  std::string recv_thread_error_msg_;
 
   //! Newest data received from netft device
   geometry_msgs::msg::WrenchStamped new_data_;
@@ -118,15 +119,13 @@ protected:
   unsigned diag_packet_count_;
   //! Last time diagnostics was published
   rclcpp::Time last_diag_pub_time_;
-  
+
   //! to keep track of out-of-order or duplicate packet
   uint32_t last_rdt_sequence_;
   //! to keep track of any error codes reported by netft
   uint32_t system_status_;
 };
 
+}  // end namespace netft_rdt_driver
 
-} // end namespace netft_rdt_driver
-
-
-#endif // NETFT_RDT_DRIVER
+#endif  // NETFT_RDT_DRIVER
