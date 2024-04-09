@@ -91,14 +91,21 @@ int main(int argc, char ** argv)
 
   std_msgs::msg::Bool is_ready;
   std::shared_ptr<netft_rdt_driver::NetFTRDTDriver> netft;
+
+  // Set up ROS publishers
+  auto node = std::make_shared<rclcpp::Node>("netft_node");
+  const rclcpp::QoS qos(10);
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub = node->create_publisher<std_msgs::msg::Bool>("netft_ready", qos);
+  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub = node->create_publisher<geometry_msgs::msg::WrenchStamped>("netft_data", 100);
+
   try {
     netft = std::make_shared<netft_rdt_driver::NetFTRDTDriver>(address, frame_id);
     is_ready.data = true;
-    netft->ready_pub->publish(is_ready);
+    ready_pub->publish(is_ready);
   } catch (std::runtime_error & e) {
     is_ready.data = false;
-    netft->ready_pub->publish(is_ready);
-    RCLCPP_ERROR_STREAM(netft->get_logger(), "Error opening NetFT: " << e.what());
+    ready_pub->publish(is_ready);
+    RCLCPP_ERROR_STREAM(node->get_logger(), "Error opening NetFT: " << e.what());
   }
 
   rclcpp::Rate pub_rate(pub_rate_hz);
@@ -115,7 +122,7 @@ int main(int argc, char ** argv)
     // Publish netft data when data is recieved.
     if (netft->waitForNewData()) {
       netft->getData(data);
-      netft->geo_pub->publish(data);
+      geo_pub->publish(data);
     }
 
     // TODO: removed diagnostics for now will implement in the future.
@@ -131,7 +138,7 @@ int main(int argc, char ** argv)
     //   last_diag_pub_time = current_time;
     // }
 
-    rclcpp::spin_some(netft);
+    rclcpp::spin_some(node);
     pub_rate.sleep();
   }
 

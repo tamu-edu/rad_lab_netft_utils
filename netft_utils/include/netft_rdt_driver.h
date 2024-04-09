@@ -49,19 +49,16 @@
 namespace netft_rdt_driver
 {
 
-class NetFTRDTDriver : public rclcpp::Node
+class NetFTRDTDriver
 {
 public:
   // Start receiving data from NetFT device
   explicit NetFTRDTDriver(const std::string & address, const std::string & frame_id = "base_link");
 
-  ~NetFTRDTDriver() override;
+  ~NetFTRDTDriver();
 
   //! Get newest RDT data from netFT device
   void getData(geometry_msgs::msg::WrenchStamped & data);
-
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub;
-  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub;
 
   // //! Add device diagnostics status wrapper
   // void diagnostics(diagnostic_updater::DiagnosticStatusWrapper &d);

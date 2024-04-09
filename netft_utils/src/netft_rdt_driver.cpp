@@ -282,8 +282,7 @@ void CalibrationInfoCommand::pack(uint8_t * buffer) const
 }
 
 NetFTRDTDriver::NetFTRDTDriver(const std::string & address, const std::string & frame_id)
-: Node("netft_rdt_driver"),
-  address_(address),
+: address_(address),
   frame_id_(frame_id),
   socket_(io_service_),
   stop_recv_thread_(false),
@@ -303,7 +302,6 @@ NetFTRDTDriver::NetFTRDTDriver(const std::string & address, const std::string & 
   socket_.connect(netft_endpoint);
 
   // Read the calibration information
-  RCLCPP_INFO(get_logger(), "Reading NetFT Calibration");
   if (!readCalibrationInformation(address)) {
     throw std::runtime_error("TCP Request for calibration information failed");
   }
@@ -323,11 +321,6 @@ NetFTRDTDriver::NetFTRDTDriver(const std::string & address, const std::string & 
       throw std::runtime_error("No data received from NetFT device");
     }
   }
-
-  // Create Publishers for making data available to other nodes.
-  const rclcpp::QoS qos(10);
-  ready_pub = this->create_publisher<std_msgs::msg::Bool>("netft_ready", qos);
-  geo_pub = this->create_publisher<geometry_msgs::msg::WrenchStamped>("netft_data", 100);
 }
 
 NetFTRDTDriver::~NetFTRDTDriver()
@@ -336,11 +329,7 @@ NetFTRDTDriver::~NetFTRDTDriver()
   // stop thread
   stop_recv_thread_ = true;
   if (!recv_thread_.timed_join(boost::posix_time::time_duration(0, 0, 1, 0))) {
-    RCLCPP_WARN(get_logger(), "Interrupting recv thread");
     recv_thread_.interrupt();
-    if (!recv_thread_.timed_join(boost::posix_time::time_duration(0, 0, 1, 0))) {
-      RCLCPP_WARN(get_logger(), "Failed second join to recv thread");
-    }
   }
   socket_.close();
 }
@@ -376,8 +365,8 @@ bool NetFTRDTDriver::readCalibrationInformation(const std::string & address)
   boost::system::error_code error;
   boost::asio::write(calibration_socket, boost::asio::buffer(buffer), error);
   if (error) {
-    RCLCPP_ERROR_STREAM(
-      get_logger(), "Failed to send calibration info request: " << error.message());
+    // RCLCPP_ERROR_STREAM(
+    //   get_logger(), "Failed to send calibration info request: " << error.message());
     return false;
   }
 
@@ -385,10 +374,10 @@ bool NetFTRDTDriver::readCalibrationInformation(const std::string & address)
   const size_t len = calibration_socket.read_some(
     boost::asio::buffer(read_buffer, CalibrationInfoResponse::CALIB_INFO_RESPONSE_SIZE + 1));
   if (len != CalibrationInfoResponse::CALIB_INFO_RESPONSE_SIZE) {
-    RCLCPP_ERROR_STREAM(
-      get_logger(),
-      "Calibration response was length: " << len << ", but expected "
-                                          << CalibrationInfoResponse::CALIB_INFO_RESPONSE_SIZE);
+    // RCLCPP_ERROR_STREAM(
+    //   get_logger(),
+    //   "Calibration response was length: " << len << ", but expected "
+    //                                       << CalibrationInfoResponse::CALIB_INFO_RESPONSE_SIZE);
     return false;
   }
 
@@ -401,23 +390,23 @@ bool NetFTRDTDriver::readCalibrationInformation(const std::string & address)
   torque_scale_ = 1.0 / calibration_info.counts_per_torque_;
 
   if (calibration_info.force_units_ == CalibrationInfoResponse::FORCE_UNIT_NEWTON) {
-    RCLCPP_INFO_STREAM(
-      get_logger(),
-      "Read " << calibration_info.counts_per_force_ << " counts per force, with units Newtons");
+    // RCLCPP_INFO_STREAM(
+    //   get_logger(),
+    //   "Read " << calibration_info.counts_per_force_ << " counts per force, with units Newtons");
   } else {
-    RCLCPP_WARN_STREAM(
-      get_logger(), "Expected calibration to have units Newtons, got: "
-                      << calibration_info.getForceUnitString() << ". Publishing non-SI units");
+    // RCLCPP_WARN_STREAM(
+    //   get_logger(), "Expected calibration to have units Newtons, got: "
+    //                   << calibration_info.getForceUnitString() << ". Publishing non-SI units");
   }
 
   if (calibration_info.torque_units_ == CalibrationInfoResponse::TORQUE_UNIT_NEWTON_METER) {
-    RCLCPP_INFO_STREAM(
-      get_logger(), "Read " << calibration_info.counts_per_torque_
-                            << " counts per torque, with units Newton-Meters");
+    // RCLCPP_INFO_STREAM(
+    //   get_logger(), "Read " << calibration_info.counts_per_torque_
+    //                         << " counts per torque, with units Newton-Meters");
   } else {
-    RCLCPP_WARN_STREAM(
-      get_logger(), "Expected calibration to have units Newton-Meters, got: "
-                      << calibration_info.getTorqueUnitString() << ". Publishing non-SI units");
+    // RCLCPP_WARN_STREAM(
+    //   get_logger(), "Expected calibration to have units Newton-Meters, got: "
+    //                   << calibration_info.getTorqueUnitString() << ". Publishing non-SI units");
   }
 
   return true;
@@ -445,9 +434,9 @@ void NetFTRDTDriver::recvThreadFunc()
     while (!stop_recv_thread_) {
       size_t len = socket_.receive(boost::asio::buffer(buffer, RDTRecord::RDT_RECORD_SIZE + 1));
       if (len != RDTRecord::RDT_RECORD_SIZE) {
-        RCLCPP_WARN(
-          get_logger(), "Receive size of %d bytes does not match expected size of %d",
-          static_cast<int>(len), static_cast<int>(RDTRecord::RDT_RECORD_SIZE));
+        // RCLCPP_WARN(
+        //   get_logger(), "Receive size of %d bytes does not match expected size of %d",
+        //   static_cast<int>(len), static_cast<int>(RDTRecord::RDT_RECORD_SIZE));
       } else {
         rdt_record.unpack(buffer);
         if (rdt_record.status_ != 0) {
