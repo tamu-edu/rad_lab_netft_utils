@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>netft_node</name>
+  <name>netft_utils</name>
   <version>1.0.1</version>
   <description>C++ class and ROS node for ATI force/torque sensors connected to a Netbox. Includes gravity compensation and transformations.</description>
 

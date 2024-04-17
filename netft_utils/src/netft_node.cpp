@@ -38,7 +38,7 @@
  */
 
 #include <geometry_msgs/msg/wrench_stamped.h>
-#include <netft_rdt_driver.h>
+#include <netft_utils/netft_rdt_driver.h>
 
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
