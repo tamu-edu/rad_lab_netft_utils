@@ -1,106 +1,100 @@
+// Copyright (c) 2021, Stogl Robotics Consulting UG (haftungsbeschränkt)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//
+// Authors: Subhas Das, Denis Stogl
+//
+
 #include "netft_utils/netft_hardware_interface.hpp"
 
-#include <chrono>
+#include <limits>
+#include <memory>
+#include <vector>
 
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
-#include "pluginlib/class_list_macros.hpp"
-
-using hardware_interface::return_type;
-
-static auto LOGGER = rclcpp::get_logger("NetFTHardwareInterface");
+#include "rclcpp/rclcpp.hpp"
 
 namespace netft_hardware_interface
 {
-NetFTHardwareInterface::~NetFTHardwareInterface()
+hardware_interface::CallbackReturn NetFTHardwareInterface::on_init(
+  const hardware_interface::HardwareInfo & info)
 {
-  on_deactivate(rclcpp_lifecycle::State());
-  on_cleanup(rclcpp_lifecycle::State());
-}
-
-CallbackReturn NetFTHardwareInterface::on_init(
-  const hardware_interface::HardwareInfo & hardware_info)
-{
-  std::cout << "In on_init\n";
-  // Call parent's init
-  auto init_result = hardware_interface::SensorInterface::on_init(hardware_info);
-  if (init_result != CallbackReturn::SUCCESS) {
-    return init_result;
+  if (
+    hardware_interface::SensorInterface::on_init(info) !=
+    hardware_interface::CallbackReturn::SUCCESS) {
+    return hardware_interface::CallbackReturn::ERROR;
   }
 
-  // Store the input data
-  ip_address_ = info_.hardware_parameters["ip_address"];
-  sensor_frame_ = info_.hardware_parameters["sensor_frame"];
+  ip_address_ = info_.hardware_parameters["address"];
 
-  return CallbackReturn::SUCCESS;
-}
+  hw_sensor_states_.resize(
+    info_.sensors[0].state_interfaces.size(), std::numeric_limits<double>::quiet_NaN());
 
-CallbackReturn NetFTHardwareInterface::on_configure(const rclcpp_lifecycle::State &)
-{
-  std::cout << "In on_configure\n";
-  // Connect to the sensor
-  netft_ = std::make_unique<netft_rdt_driver::NetFTRDTDriver>(ip_address_, sensor_frame_);
-
-  return CallbackReturn::SUCCESS;
-}
-
-CallbackReturn NetFTHardwareInterface::on_cleanup(const rclcpp_lifecycle::State &)
-{
-  return CallbackReturn::SUCCESS;
+  return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 std::vector<hardware_interface::StateInterface> NetFTHardwareInterface::export_state_interfaces()
 {
-  std::cout << "In export_state_interfaces\n";
   std::vector<hardware_interface::StateInterface> state_interfaces;
 
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-    "netft_sensor/force.x", hardware_interface::HW_IF_EFFORT, &wrench_data_.wrench.force.x));
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-    "netft_sensor/force.y", hardware_interface::HW_IF_EFFORT, &wrench_data_.wrench.force.y));
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-    "netft_sensor/force.z", hardware_interface::HW_IF_EFFORT, &wrench_data_.wrench.force.z));
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-    "netft_sensor/torque.x", hardware_interface::HW_IF_EFFORT, &wrench_data_.wrench.torque.x));
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-    "netft_sensor/torque.y", hardware_interface::HW_IF_EFFORT, &wrench_data_.wrench.torque.y));
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-    "netft_sensor/torque.z", hardware_interface::HW_IF_EFFORT, &wrench_data_.wrench.torque.z));
+  // export sensor state interface
+  for (uint i = 0; i < info_.sensors[0].state_interfaces.size(); i++) {
+    state_interfaces.emplace_back(hardware_interface::StateInterface(
+      info_.sensors[0].name, info_.sensors[0].state_interfaces[i].name, &hw_sensor_states_[i]));
+  }
 
   return state_interfaces;
 }
 
-CallbackReturn NetFTHardwareInterface::on_activate(const rclcpp_lifecycle::State &)
+hardware_interface::CallbackReturn NetFTHardwareInterface::on_activate(
+  const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  std::cout << "In on_activate\n";
-  return CallbackReturn::SUCCESS;
+  RCLCPP_INFO_STREAM(
+    rclcpp::get_logger("NetFTHardwareInterface"), "Opening sensor at: " << ip_address_);
+
+  ft_driver_ = std::make_unique<netft_rdt_driver::NetFTRDTDriver>("192.168.1.12");
+
+  return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-CallbackReturn NetFTHardwareInterface::on_deactivate(const rclcpp_lifecycle::State &)
+hardware_interface::CallbackReturn NetFTHardwareInterface::on_deactivate(
+  const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  return CallbackReturn::SUCCESS;
+  return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-CallbackReturn NetFTHardwareInterface::on_shutdown(const rclcpp_lifecycle::State &)
+hardware_interface::return_type NetFTHardwareInterface::read(
+  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  return CallbackReturn::SUCCESS;
-}
-
-CallbackReturn NetFTHardwareInterface::on_error(const rclcpp_lifecycle::State &)
-{
-  return CallbackReturn::SUCCESS;
-}
-
-return_type NetFTHardwareInterface::read(const rclcpp::Time & time, const rclcpp::Duration & period)
-{
-  std::cout << "In on_read\n";
-  if (netft_->waitForNewData()) {
-    netft_->getData(wrench_data_);
+  geometry_msgs::msg::WrenchStamped wrench;
+  if (ft_driver_->waitForNewData()) {
+    ft_driver_->getData(wrench);
   }
 
-  return return_type::OK;
+  hw_sensor_states_.at(0) = wrench.wrench.force.x;
+  hw_sensor_states_.at(1) = wrench.wrench.force.y;
+  hw_sensor_states_.at(2) = wrench.wrench.force.z;
+  hw_sensor_states_.at(3) = wrench.wrench.torque.x;
+  hw_sensor_states_.at(4) = wrench.wrench.torque.y;
+  hw_sensor_states_.at(5) = wrench.wrench.torque.z;
+
+  return hardware_interface::return_type::OK;
 }
 
 }  // namespace netft_hardware_interface
+
+#include "pluginlib/class_list_macros.hpp"
 
 PLUGINLIB_EXPORT_CLASS(
   netft_hardware_interface::NetFTHardwareInterface, hardware_interface::SensorInterface)

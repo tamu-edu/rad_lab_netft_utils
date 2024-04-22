@@ -1,0 +1,9 @@
+<library path="netft_hardware_interface">
+  <class name="netft_hardware_interface/NetFTHardwareInterface"
+         type="netft_hardware_interface::NetFTHardwareInterface"
+         base_class_type="hardware_interface::SensorInterface">
+    <description>
+      The ros2_control RRBot example using external Force Torque Sensor where it is separate from the RRBot.
+    </description>
+  </class>
+</library>

@@ -10,7 +10,7 @@ To launch the direct node, run the following with the correct IP address
 ros2 run netft_utils netft_node --address WWW.XXX.YYY.ZZZ
 ```
 
-To run an example launch for `ros2_control` run the following with the correct IP address
+To run an example launch for `ros2_control` run the following with option namespace
 ```sh
-ros2 launch netft_utils netft.launch.py address:=WWW.XXX.YYY.ZZZ
+ros2 launch netft_utils netft.launch.py node_namespace:="test_ns/"
 ```
