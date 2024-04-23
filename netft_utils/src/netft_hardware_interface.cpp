@@ -21,6 +21,7 @@
 #include <limits>
 #include <memory>
 #include <vector>
+#include <stdexcept>
 
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -63,7 +64,13 @@ hardware_interface::CallbackReturn NetFTHardwareInterface::on_activate(
   RCLCPP_INFO_STREAM(
     rclcpp::get_logger("NetFTHardwareInterface"), "Opening sensor at: " << ip_address_);
 
-  ft_driver_ = std::make_unique<netft_rdt_driver::NetFTRDTDriver>("192.168.1.12");
+  try {
+    ft_driver_ = std::make_unique<netft_rdt_driver::NetFTRDTDriver>(ip_address_);
+  } catch (const std::runtime_error& e) {
+    RCLCPP_ERROR_STREAM(
+      rclcpp::get_logger("NetFTHardwareInterface"), "Failed to reach sensor at: " << ip_address_);
+    throw e;
+  }
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
