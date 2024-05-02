@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="han">
+
+  <xacro:include filename="$(find netft_utils)/urdf/ros2_control.xacro"/>
+
+  <!-- Make a simple cylinder for the sensor -->
+  <xacro:property name="ati_dia" value="0.19" />
+  <xacro:property name="ati_height" value="0.064" />
+  <link name="ati_omega_191" >
+    <visual>
+      <origin xyz="0 0 ${-0.5*ati_height}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="${0.5*ati_dia}" length="${ati_height}" />
+      </geometry>
+      <material name="Gray(ish)">
+        <color rgba="0.427 0.455 0.478 1.0"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 ${-0.5*ati_height}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="${0.5*ati_dia}" length="${ati_height}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Add ros2_control information -->
+  <xacro:netft_sensor_ros2_control name="netft_sensor" ip_address="192.168.1.12"/>
+
+</robot>

@@ -37,105 +37,110 @@
  * Publishes it ROS topic
  */
 
+#include <geometry_msgs/msg/wrench_stamped.h>
+#include <netft_utils/netft_rdt_driver.h>
+
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
-#include <netft_rdt_driver.h>
-#include <geometry_msgs/msg/wrench_stamped.h>
 // #include <diagnostic_msgs/msg/DiagnosticArray.h>
 // #include "diagnostic_updater/DiagnosticStatusWrapper.h"
-#include <std_msgs/msg/bool.hpp>
 #include <unistd.h>
+
+#include <boost/program_options.hpp>
 #include <iostream>
 #include <memory>
-#include <boost/program_options.hpp>
+#include <std_msgs/msg/bool.hpp>
 
 namespace po = boost::program_options;
 using namespace std;
 
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
 
-int main(int argc, char** argv) {
-    rclcpp::init(argc, argv);
+  float pub_rate_hz;
+  string address;
+  string frame_id;
 
-    float pub_rate_hz;
-    string address;
-    string frame_id;
+  po::options_description desc("Options");
+  desc.add_options()("--ros-args", "ros arguments")("help", "display help")(
+    "rate", po::value<float>(&pub_rate_hz)->default_value(500.0), "set publish rate (in hertz)")(
+    "address", po::value<string>(&address), "IP address of NetFT box")(
+    "frame_id", po::value<string>(&frame_id)->default_value("base_link"),
+    "frame_id for Wrench msgs");
 
-    po::options_description desc("Options");
-    desc.add_options()
-        ("--ros-args", "ros arguments")
-        ("help", "display help")
-        ("rate", po::value<float>(&pub_rate_hz)->default_value(500.0), "set publish rate (in hertz)")
-        ("address", po::value<string>(&address), "IP address of NetFT box")
-        ("frame_id", po::value<string>(&frame_id)->default_value("base_link"), "frame_id for Wrench msgs");
+  po::positional_options_description p;
+  p.add("address", 1);
+  p.add("frame_id", 1);
 
-    po::positional_options_description p;
-    p.add("address", 1);
-    p.add("frame_id", 1);
+  po::variables_map vm;
+  po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
+  po::notify(vm);
 
-    po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
-    po::notify(vm);
+  if (vm.count("help")) {
+    cout << desc << endl;
+    //usage(progname);
+    exit(EXIT_SUCCESS);
+  }
 
-    if (vm.count("help")) {
-        cout << desc << endl;
-        //usage(progname);
-        exit(EXIT_SUCCESS);
+  if (!vm.count("address")) {
+    cout << desc << endl;
+    cerr << "Please specify address of NetFT" << endl;
+    exit(EXIT_FAILURE);
+  }
+
+  std_msgs::msg::Bool is_ready;
+  std::shared_ptr<netft_rdt_driver::NetFTRDTDriver> netft;
+
+  // Set up ROS publishers
+  auto node = std::make_shared<rclcpp::Node>("netft_node");
+  const rclcpp::QoS qos(10);
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub = node->create_publisher<std_msgs::msg::Bool>("netft_ready", qos);
+  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub = node->create_publisher<geometry_msgs::msg::WrenchStamped>("netft_data", 100);
+
+  try {
+    netft = std::make_shared<netft_rdt_driver::NetFTRDTDriver>(address, frame_id);
+    is_ready.data = true;
+    ready_pub->publish(is_ready);
+  } catch (std::runtime_error & e) {
+    is_ready.data = false;
+    ready_pub->publish(is_ready);
+    RCLCPP_ERROR_STREAM(node->get_logger(), "Error opening NetFT: " << e.what());
+  }
+
+  rclcpp::Rate pub_rate(pub_rate_hz);
+  geometry_msgs::msg::WrenchStamped data;
+
+  // rclcpp::Duration diag_pub_duration(std::chrono::milliseconds(1000));
+  // rclcpp::Publisher diag_pub = netft->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 2);
+  // diagnostic_msgs::DiagnosticArray diag_array;
+  // diag_array.status.reserve(1);
+  // diagnostic_updater::DiagnosticStatusWrapper diag_status;
+  // rclcpp::Time last_diag_pub_time(rclcpp::Clock().now());
+
+  while (rclcpp::ok()) {
+    // Publish netft data when data is recieved.
+    if (netft->waitForNewData()) {
+      netft->getData(data);
+      geo_pub->publish(data);
     }
 
-    if (!vm.count("address")) {
-        cout << desc << endl;
-        cerr << "Please specify address of NetFT" << endl;
-        exit(EXIT_FAILURE);
-    }
+    // TODO: removed diagnostics for now will implement in the future.
+    // rclcpp::Time current_time(rclcpp::Clock().now());
+    // if ( (current_time - last_diag_pub_time) > diag_pub_duration )
+    // {
+    //   diag_array.status.clear();
+    //   netft->diagnostics(diag_status);
+    //   diag_array.status.push_back(diag_status);
+    //   diag_array.header.stamp = rclcpp::Clock().now();
+    //   diag_pub.publish(diag_array);
+    //   ready_pub->publish(is_ready);
+    //   last_diag_pub_time = current_time;
+    // }
 
-    std_msgs::msg::Bool is_ready;
-    std::shared_ptr<netft_rdt_driver::NetFTRDTDriver> netft;
-    try {
-        netft = std::make_shared<netft_rdt_driver::NetFTRDTDriver>(address, frame_id);
-        is_ready.data = true;
-        netft->ready_pub->publish(is_ready);
-    }
-    catch (std::runtime_error &e) {
-        is_ready.data = false;
-        netft->ready_pub->publish(is_ready);
-        RCLCPP_ERROR_STREAM(netft->get_logger(), "Error opening NetFT: " << e.what());
-    }
+    rclcpp::spin_some(node);
+    pub_rate.sleep();
+  }
 
-
-    rclcpp::Rate pub_rate(pub_rate_hz);
-    geometry_msgs::msg::WrenchStamped data;
-
-    // rclcpp::Duration diag_pub_duration(std::chrono::milliseconds(1000));
-    // rclcpp::Publisher diag_pub = netft->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 2);
-    // diagnostic_msgs::DiagnosticArray diag_array;
-    // diag_array.status.reserve(1);
-    // diagnostic_updater::DiagnosticStatusWrapper diag_status;
-    // rclcpp::Time last_diag_pub_time(rclcpp::Clock().now());
-
-    while (rclcpp::ok()) {
-
-        // Publish netft data when data is recieved.
-        if (netft->waitForNewData()) {
-            netft->getData(data);
-            netft->geo_pub->publish(data);
-        }
-
-        // TODO: removed diagnostics for now will implement in the future.
-        // rclcpp::Time current_time(rclcpp::Clock().now());
-        // if ( (current_time - last_diag_pub_time) > diag_pub_duration )
-        // {
-        //   diag_array.status.clear();
-        //   netft->diagnostics(diag_status);
-        //   diag_array.status.push_back(diag_status);
-        //   diag_array.header.stamp = rclcpp::Clock().now();
-        //   diag_pub.publish(diag_array);
-        //   ready_pub->publish(is_ready);
-        //   last_diag_pub_time = current_time;
-        // }
-
-        rclcpp::spin_some(netft);
-        pub_rate.sleep();
-    }
-
-    return 0;
+  return 0;
 }
