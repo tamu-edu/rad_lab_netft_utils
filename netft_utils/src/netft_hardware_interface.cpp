@@ -28,13 +28,13 @@
 
 namespace netft_hardware_interface
 {
-hardware_interface::CallbackReturn NetFTHardwareInterface::on_init(
+CallbackReturn NetFTHardwareInterface::on_init(
   const hardware_interface::HardwareInfo & info)
 {
   if (
     hardware_interface::SensorInterface::on_init(info) !=
-    hardware_interface::CallbackReturn::SUCCESS) {
-    return hardware_interface::CallbackReturn::ERROR;
+    CallbackReturn::SUCCESS) {
+    return CallbackReturn::ERROR;
   }
 
   ip_address_ = info_.hardware_parameters["address"];
@@ -42,7 +42,7 @@ hardware_interface::CallbackReturn NetFTHardwareInterface::on_init(
   hw_sensor_states_.resize(
     info_.sensors[0].state_interfaces.size(), std::numeric_limits<double>::quiet_NaN());
 
-  return hardware_interface::CallbackReturn::SUCCESS;
+  return CallbackReturn::SUCCESS;
 }
 
 std::vector<hardware_interface::StateInterface> NetFTHardwareInterface::export_state_interfaces()
@@ -58,7 +58,7 @@ std::vector<hardware_interface::StateInterface> NetFTHardwareInterface::export_s
   return state_interfaces;
 }
 
-hardware_interface::CallbackReturn NetFTHardwareInterface::on_activate(
+CallbackReturn NetFTHardwareInterface::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   RCLCPP_INFO_STREAM(
@@ -72,17 +72,16 @@ hardware_interface::CallbackReturn NetFTHardwareInterface::on_activate(
     throw e;
   }
 
-  return hardware_interface::CallbackReturn::SUCCESS;
+  return CallbackReturn::SUCCESS;
 }
 
-hardware_interface::CallbackReturn NetFTHardwareInterface::on_deactivate(
+CallbackReturn NetFTHardwareInterface::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  return hardware_interface::CallbackReturn::SUCCESS;
+  return CallbackReturn::SUCCESS;
 }
 
-hardware_interface::return_type NetFTHardwareInterface::read(
-  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
+hardware_interface::return_type NetFTHardwareInterface::read()
 {
   geometry_msgs::msg::WrenchStamped wrench;
   if (ft_driver_->waitForNewData()) {
