@@ -28,6 +28,8 @@
 
 namespace netft_hardware_interface
 {
+using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+
 CallbackReturn NetFTHardwareInterface::on_init(
   const hardware_interface::HardwareInfo & info)
 {
@@ -81,7 +83,7 @@ CallbackReturn NetFTHardwareInterface::on_deactivate(
   return CallbackReturn::SUCCESS;
 }
 
-hardware_interface::return_type NetFTHardwareInterface::read()
+hardware_interface::return_type NetFTHardwareInterface::read([[maybe_unused]] const rclcpp::Time & time, [[maybe_unused]] const rclcpp::Duration & period)
 {
   geometry_msgs::msg::WrenchStamped wrench;
   if (ft_driver_->waitForNewData()) {
