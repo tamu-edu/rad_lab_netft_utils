@@ -1,0 +1,19 @@
+$(var node_namespace)controller_manager:
+  ros__parameters:
+    update_rate: 500  # Hz
+
+    force_torque_sensor_broadcaster:
+      type: force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster
+
+
+$(var node_namespace)force_torque_sensor_broadcaster:
+  ros__parameters:
+    sensor_name: netft_sensor
+    state_interface_names:
+      - force.x
+      - force.y
+      - force.z
+      - torque.x
+      - torque.y
+      - torque.z
+    frame_id: netft_link
