@@ -38,23 +38,22 @@ public:
   RCLCPP_SHARED_PTR_DEFINITIONS(NetFTHardwareInterface)
 
   NETFT_HARDWARE_INTERFACE_PUBLIC
-  hardware_interface::CallbackReturn on_init(
+  CallbackReturn on_init(
     const hardware_interface::HardwareInfo & info) override;
 
   NETFT_HARDWARE_INTERFACE_PUBLIC
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
 
   NETFT_HARDWARE_INTERFACE_PUBLIC
-  hardware_interface::CallbackReturn on_activate(
+  CallbackReturn on_activate(
     const rclcpp_lifecycle::State & previous_state) override;
 
   NETFT_HARDWARE_INTERFACE_PUBLIC
-  hardware_interface::CallbackReturn on_deactivate(
+  CallbackReturn on_deactivate(
     const rclcpp_lifecycle::State & previous_state) override;
 
   NETFT_HARDWARE_INTERFACE_PUBLIC
-  hardware_interface::return_type read(
-    const rclcpp::Time & time, const rclcpp::Duration & period) override;
+  hardware_interface::return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
   // Store the sensor states
