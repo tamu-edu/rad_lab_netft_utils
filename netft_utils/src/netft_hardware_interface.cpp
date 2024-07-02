@@ -86,9 +86,7 @@ CallbackReturn NetFTHardwareInterface::on_deactivate(
 hardware_interface::return_type NetFTHardwareInterface::read([[maybe_unused]] const rclcpp::Time & time, [[maybe_unused]] const rclcpp::Duration & period)
 {
   geometry_msgs::msg::WrenchStamped wrench;
-  if (ft_driver_->waitForNewData()) {
-    ft_driver_->getData(wrench);
-  }
+  ft_driver_->getData(wrench);
 
   hw_sensor_states_.at(0) = wrench.wrench.force.x;
   hw_sensor_states_.at(1) = wrench.wrench.force.y;
