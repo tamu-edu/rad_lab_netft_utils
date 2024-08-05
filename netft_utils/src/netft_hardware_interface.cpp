@@ -44,6 +44,17 @@ CallbackReturn NetFTHardwareInterface::on_init(
   hw_sensor_states_.resize(
     info_.sensors[0].state_interfaces.size(), std::numeric_limits<double>::quiet_NaN());
 
+  RCLCPP_INFO_STREAM(
+  rclcpp::get_logger("NetFTHardwareInterface"), "Opening sensor at: " << ip_address_);
+
+  try {
+    ft_driver_ = std::make_unique<netft_rdt_driver::NetFTRDTDriver>(ip_address_);
+  } catch (const std::runtime_error& e) {
+    RCLCPP_ERROR_STREAM(
+      rclcpp::get_logger("NetFTHardwareInterface"), "Failed to reach sensor at: " << ip_address_);
+    throw e;
+  }
+
   return CallbackReturn::SUCCESS;
 }
 
@@ -63,17 +74,6 @@ std::vector<hardware_interface::StateInterface> NetFTHardwareInterface::export_s
 CallbackReturn NetFTHardwareInterface::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  RCLCPP_INFO_STREAM(
-    rclcpp::get_logger("NetFTHardwareInterface"), "Opening sensor at: " << ip_address_);
-
-  try {
-    ft_driver_ = std::make_unique<netft_rdt_driver::NetFTRDTDriver>(ip_address_);
-  } catch (const std::runtime_error& e) {
-    RCLCPP_ERROR_STREAM(
-      rclcpp::get_logger("NetFTHardwareInterface"), "Failed to reach sensor at: " << ip_address_);
-    throw e;
-  }
-
   return CallbackReturn::SUCCESS;
 }
 
