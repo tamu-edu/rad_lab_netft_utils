@@ -67,7 +67,9 @@ int main(int argc, char ** argv)
     "rate", po::value<float>(&pub_rate_hz)->default_value(500.0), "set publish rate (in hertz)")(
     "address", po::value<string>(&address), "IP address of NetFT box")(
     "frame_id", po::value<string>(&frame_id)->default_value("base_link"),
-    "frame_id for Wrench msgs");
+    "frame_id for Wrench msgs")(
+    "topic_name", po::value<string>()->default_value("ati_sensor_"), "topic name for wrench output"
+    );
 
   po::positional_options_description p;
   p.add("address", 1);
@@ -95,8 +97,8 @@ int main(int argc, char ** argv)
   // Set up ROS publishers
   auto node = std::make_shared<rclcpp::Node>("netft_node");
   const rclcpp::QoS qos(10);
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub = node->create_publisher<std_msgs::msg::Bool>("netft_ready", qos);
-  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub = node->create_publisher<geometry_msgs::msg::WrenchStamped>("netft_data", 100);
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub = node->create_publisher<std_msgs::msg::Bool>(topic_name + "netft_ready", qos);
+  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub = node->create_publisher<geometry_msgs::msg::WrenchStamped>(topic_name + "netft_data", 100);
 
   try {
     netft = std::make_shared<netft_rdt_driver::NetFTRDTDriver>(address, frame_id);
