@@ -40,16 +40,12 @@
 #include <geometry_msgs/msg/wrench_stamped.h>
 #include <netft_utils/netft_rdt_driver.h>
 
-#include <memory>
-#include <rclcpp/rclcpp.hpp>
-// #include <diagnostic_msgs/msg/DiagnosticArray.h>
-// #include "diagnostic_updater/DiagnosticStatusWrapper.h"
-#include <unistd.h>
-
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <memory>
+#include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <vector>
 
 namespace po = boost::program_options;
 using namespace std;
@@ -57,6 +53,18 @@ using namespace std;
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
+
+  // Filter out ROS 2-specific arguments
+  std::vector<char *> filtered_args;
+  for (int i = 0; i < argc; ++i) {
+    if (std::string(argv[i]) != "--ros-args") {
+      filtered_args.push_back(argv[i]);
+    }
+  }
+  filtered_args.push_back(nullptr); // Add null terminator
+
+  int filtered_argc = static_cast<int>(filtered_args.size()) - 1;
+  char ** filtered_argv = filtered_args.data();
 
   float pub_rate_hz;
   string address;
@@ -68,7 +76,7 @@ int main(int argc, char ** argv)
     "address", po::value<string>(&address), "IP address of NetFT box")(
     "frame_id", po::value<string>(&frame_id)->default_value("base_link"),
     "frame_id for Wrench msgs")(
-    "topic_name", po::value<string>()->default_value("ati_sensor_"), "topic name for wrench output"
+    "topic_name", po::value<string>()->default_value(""), "topic name for wrench output"
     );
 
   po::positional_options_description p;
@@ -76,7 +84,7 @@ int main(int argc, char ** argv)
   p.add("frame_id", 1);
 
   po::variables_map vm;
-  po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
+  po::store(po::command_line_parser(filtered_argc, filtered_argv).options(desc).positional(p).run(), vm);
   po::notify(vm);
 
   if (vm.count("help")) {
@@ -97,8 +105,14 @@ int main(int argc, char ** argv)
   // Set up ROS publishers
   auto node = std::make_shared<rclcpp::Node>("netft_node");
   const rclcpp::QoS qos(10);
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub = node->create_publisher<std_msgs::msg::Bool>(topic_name + "netft_ready", qos);
-  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub = node->create_publisher<geometry_msgs::msg::WrenchStamped>(topic_name + "netft_data", 100);
+  string topic_name;
+  if (vm.count("topic_name")) {
+    topic_name = vm["topic_name"].as<string>();
+  } else {
+    topic_name = ""; // Default value if topic_name is not provided
+  }
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ready_pub = node->create_publisher<std_msgs::msg::Bool>("netft_ready" + topic_name, qos);
+  rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr geo_pub = node->create_publisher<geometry_msgs::msg::WrenchStamped>("netft_data" + topic_name, 100);
 
   try {
     netft = std::make_shared<netft_rdt_driver::NetFTRDTDriver>(address, frame_id);
